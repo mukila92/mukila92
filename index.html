@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Digital Fashion Collection</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Arial', sans-serif;
+        }
+        
+        body {
+            background-color: #0f0f0f;
+            color: #ffffff;
+            overflow-x: hidden;
+        }
+        
+        .loader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #0f0f0f;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 1s ease-out;
+        }
+        
+        .loader.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        
+        .loader span {
+            font-size: 24px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: #fff;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff, #ff3e9d);
+            background-size: 200% auto;
+            animation: shine 2s linear infinite;
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        @keyframes shine {
+            to {
+                background-position: 200% center;
+            }
+        }
+        
+        header {
+            padding: 30px 5%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: fixed;
+            width: 100%;
+            z-index: 100;
+            transition: background-color 0.3s ease;
+        }
+        
+        header.scrolled {
+            background-color: rgba(15, 15, 15, 0.9);
+            backdrop-filter: blur(10px);
+        }
+        
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        nav ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        nav ul li {
+            margin-left: 30px;
+        }
+        
+        nav ul li a {
+            text-decoration: none;
+            color: #ffffff;
+            font-weight: 500;
+            text-transform: uppercase;
+            font-size: 14px;
+            letter-spacing: 1px;
+            transition: color 0.3s ease;
+        }
+        
+        nav ul li a:hover {
+            color: #ff3e9d;
+        }
+        
+        .hero {
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+            opacity: 0;
+            transform: translateY(30px);
+            animation: fadeUp 1s forwards 0.5s;
+        }
+        
+        @keyframes fadeUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .hero h1 {
+            font-size: 72px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .hero p {
+            font-size: 18px;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-button {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+            color: #ffffff;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .cta-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(255, 62, 157, 0.3);
+        }
+        
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+        }
+        
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, rgba(15, 15, 15, 0.6) 0%, rgba(15, 15, 15, 0.9) 100%);
+        }
+        
+        .hero-bg canvas {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .collection {
+            padding: 100px 5%;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 36px;
+            margin-bottom: 50px;
+            position: relative;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        
+        .section-title::after {
+            content: '';
+            position: absolute;
+            bottom: -10px;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+        }
+        
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 30px;
+            margin-top: 50px;
+        }
+        
+        .item {
+            position: relative;
+            border-radius: 10px;
+            overflow: hidden;
+            cursor: pointer;
+            transform-style: preserve-3d;
+            perspective: 1000px;
+            transition: transform 0.5s ease;
+        }
+        
+        .item:hover {
+            transform: scale(1.03);
+        }
+        
+        .item img {
+            width: 100%;
+            height: 400px;
+            object-fit: cover;
+            display: block;
+            transition: transform 0.5s ease;
+        }
+        
+        .item:hover img {
+            transform: scale(1.1);
+        }
+        
+        .item-info {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            padding: 20px;
+            background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+            transform: translateY(100%);
+            transition: transform 0.3s ease;
+        }
+        
+        .item:hover .item-info {
+            transform: translateY(0);
+        }
+        
+        .item-title {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+        
+        .item-desc {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        .fullscreen-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .fullscreen-view.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .fullscreen-content {
+            width: 80%;
+            height: 80%;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .fullscreen-image {
+            max-width: 100%;
+            max-height: 80%;
+            object-fit: contain;
+            border-radius: 5px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        
+        .fullscreen-details {
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .fullscreen-title {
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: #ffffff;
+        }
+        
+        .fullscreen-desc {
+            font-size: 16px;
+            max-width: 600px;
+            color: #cccccc;
+        }
+        
+        .close-fullscreen {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 30px;
+            color: #ffffff;
+            cursor: pointer;
+            background: none;
+            border: none;
+            transition: transform 0.3s ease;
+        }
+        
+        .close-fullscreen:hover {
+            transform: rotate(90deg);
+            color: #ff3e9d;
+        }
+        
+        .immersive-display {
+            padding: 100px 5%;
+            background-color: #080808;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .display-container {
+            margin-top: 50px;
+            position: relative;
+            height: 80vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+        
+        .model-viewer {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+        }
+        
+        .model-container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .model-placeholder {
+            width: 60%;
+            height: 80%;
+            background-color: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .model-placeholder::before {
+            content: '';
+            position: absolute;
+            width: 150%;
+            height: 150%;
+            background: linear-gradient(45deg, transparent, rgba(255, 62, 157, 0.1), transparent);
+            top: -25%;
+            left: -25%;
+            animation: shine-effect 3s infinite;
+        }
+        
+        @keyframes shine-effect {
+            0% {
+                transform: translateX(-100%) translateY(-100%) rotate(45deg);
+            }
+            100% {
+                transform: translateX(100%) translateY(100%) rotate(45deg);
+            }
+        }
+        
+        .model-placeholder img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+        
+        .model-controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .control-btn {
+            padding: 12px 25px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 30px;
+            color: #ffffff;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+        }
+        
+        .control-btn:hover {
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+            transform: translateY(-3px);
+        }
+        
+        .contact {
+            padding: 100px 5%;
+            background-color: #0f0f0f;
+        }
+        
+        .contact-form {
+            max-width: 600px;
+            margin: 50px auto 0;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 15px;
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            color: #ffffff;
+            font-size: 16px;
+        }
+        
+        .form-group textarea {
+            height: 150px;
+            resize: vertical;
+        }
+        
+        .submit-btn {
+            display: inline-block;
+            padding: 15px 30px;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+            color: #ffffff;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .submit-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(255, 62, 157, 0.3);
+        }
+        
+        footer {
+            padding: 30px 5%;
+            background-color: #080808;
+            text-align: center;
+        }
+        
+        .footer-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .footer-logo {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: 2px;
+            background: linear-gradient(90deg, #ff3e9d, #0095ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .footer-links ul {
+            display: flex;
+            list-style: none;
+        }
+        
+        .footer-links ul li {
+            margin-left: 20px;
+        }
+        
+        .footer-links ul li a {
+            text-decoration: none;
+            color: #ffffff;
+            transition: color 0.3s ease;
+        }
+        
+        .footer-links ul li a:hover {
+            color: #ff3e9d;
+        }
+        
+        .copyright {
+            width: 100%;
+            margin-top: 20px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 48px;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .footer-content {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .footer-links ul {
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            
+            .footer-links ul li {
+                margin: 5px 10px;
+            }
+            
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Preloader -->
+    <div class="loader">
+        <span>Loading Digital Fashion Experience</span>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="logo">DIGITAL FASHION</div>
+        <nav>
+            <ul>
+                <li><a href="#collection">Collection</a></li>
+                <li><a href="#immersive">Experience</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-bg">
+            <canvas id="hero-canvas"></canvas>
+        </div>
+        <div class="hero-content">
+            <h1>Digital Fashion Collection</h1>
+            <p>Experience the future of fashion through our innovative digital collection. Blending art, technology, and style in the metaverse.</p>
+            <a href="#collection" class="cta-button">Explore Collection</a>
+        </div>
+    </section>
+
+    <!-- Collection Section -->
+    <section class="collection" id="collection">
+        <h2 class="section-title">Our Collection</h2>
+        <div class="gallery">
+            <div class="item" data-title="Neon Dream Jacket" data-desc="A futuristic jacket with reactive neon elements that respond to environmental changes and sound. Perfect for digital nightlife.">
+                <img src="/api/placeholder/400/500" alt="Neon Dream Jacket">
+                <div class="item-info">
+                    <h3 class="item-title">Neon Dream Jacket</h3>
+                    <p class="item-desc">Futuristic jacket with reactive elements</p>
+                </div>
+            </div>
+            <div class="item" data-title="Crystal Nebula Dress" data-desc="This ethereal dress is composed of thousands of digital crystals that shimmer and create a nebula-like effect as you move through virtual spaces.">
+                <img src="/api/placeholder/400/500" alt="Crystal Nebula Dress">
+                <div class="item-info">
+                    <h3 class="item-title">Crystal Nebula Dress</h3>
+                    <p class="item-desc">Ethereal dress with shimmering effect</p>
+                </div>
+            </div>
+            <div class="item" data-title="Techno Samurai Outfit" data-desc="Inspired by traditional samurai armor merged with cyberpunk aesthetics, this outfit offers both protection and style for the digital warrior.">
+                <img src="/api/placeholder/400/500" alt="Techno Samurai Outfit">
+                <div class="item-info">
+                    <h3 class="item-title">Techno Samurai Outfit</h3>
+                    <p class="item-desc">Cyberpunk-inspired armor</p>
+                </div>
+            </div>
+            <div class="item" data-title="Holographic Metamorphosis Cape" data-desc="This cape transforms its appearance based on your avatar's movements and interactions, creating a unique visual experience that never repeats.">
+                <img src="/api/placeholder/400/500" alt="Holographic Metamorphosis Cape">
+                <div class="item-info">
+                    <h3 class="item-title">Holographic Metamorphosis Cape</h3>
+                    <p class="item-desc">Transformative holographic accessory</p>
+                </div>
+            </div>
+            <div class="item" data-title="Quantum Algorithm Boots" data-desc="These boots generate particle effects with each step, leaving a trail of digital footprints that form intricate patterns based on quantum algorithms.">
+                <img src="/api/placeholder/400/500" alt="Quantum Algorithm Boots">
+                <div class="item-info">
+                    <h3 class="item-title">Quantum Algorithm Boots</h3>
+                    <p class="item-desc">Footwear with particle effects</p>
+                </div>
+            </div>
+            <div class="item" data-title="Digital Flora Ensemble" data-desc="A living digital outfit that grows and blooms with procedurally generated flowers and foliage that respond to social interactions in virtual spaces.">
+                <img src="/api/placeholder/400/500" alt="Digital Flora Ensemble">
+                <div class="item-info">
+                    <h3 class="item-title">Digital Flora Ensemble</h3>
+                    <p class="item-desc">Living outfit with procedural growth</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Fullscreen View -->
+    <div class="fullscreen-view">
+        <div class="fullscreen-content">
+            <img src="" alt="" class="fullscreen-image">
+            <div class="fullscreen-details">
+                <h3 class="fullscreen-title"></h3>
+                <p class="fullscreen-desc"></p>
+            </div>
+            <button class="close-fullscreen">&times;</button>
+        </div>
+    </div>
+
+    <!-- Immersive Display Section -->
+    <section class="immersive-display" id="immersive">
+        <h2 class="section-title">Immersive Experience</h2>
+        <div class="display-container">
+            <div class="model-viewer">
+                <div class="model-container">
+                    <div class="model-placeholder">
+                        <img src="/api/placeholder/600/700" alt="3D Model Placeholder">
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="model-controls">
+            <button class="control-btn prev-item">Previous</button>
+            <button class="control-btn next-item">Next</button>
+            <button class="control-btn rotate-model">Rotate</button>
+            <button class="control-btn zoom-in">Zoom In</button>
+            <button class="control-btn zoom-out">Zoom Out</button>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section class="contact" id="contact">
+        <h2 class="section-title">Get In Touch</h2>
+        <div class="contact-form">
+            <div class="form-group">
+                <label for="name">Name</label>
+                <input type="text" id="name" placeholder="Your name">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Your email">
+            </div>
+            <div class="form-group">
+                <label for="message">Message</label>
+                <textarea id="message" placeholder="Your message"></textarea>
+            </div>
+            <button class="submit-btn">Send Message</button>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-content">
+            <div class="footer-logo">DIGITAL FASHION</div>
+            <div class="footer-links">
+                <ul>
+                    <li><a href="#collection">Collection</a></li>
+                    <li><a href="#immersive">Experience</a></li>
+                    <li><a href="#contact">Contact</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; 2025 Digital Fashion Collection. All rights reserved.
+        </div>
+    </footer>
+
+    <script>
+        // Preloader
+        window.addEventListener('load', () => {
+            setTimeout(() => {
+                document.querySelector('.loader').classList.add('hidden');
+            }, 1500);
+        });
+
+        // Header scroll effect
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.classList.add('scrolled');
+            } else {
+                header.classList.remove('scrolled');
+            }
+        });
+
+        // Smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                window.scrollTo({
+                    top: target.offsetTop - 80,
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Gallery item click for fullscreen view
+        document.querySelectorAll('.item').forEach(item => {
+            item.addEventListener('click', () => {
+                const fullscreenView = document.querySelector('.fullscreen-view');
+                const fullscreenImage = document.querySelector('.fullscreen-image');
+                const fullscreenTitle = document.querySelector('.fullscreen-title');
+                const fullscreenDesc = document.querySelector('.fullscreen-desc');
+                
+                fullscreenImage.src = item.querySelector('img').src;
+                fullscreenTitle.textContent = item.getAttribute('data-title');
+                fullscreenDesc.textContent = item.getAttribute('data-desc');
+                
+                fullscreenView.classList.add('active');
+            });
+        });
+
+        // Close fullscreen view
+        document.querySelector('.close-fullscreen').addEventListener('click', () => {
+            document.querySelector('.fullscreen-view').classList.remove('active');
+        });
+
+        // Hero canvas background effect
+        const canvas = document.getElementById('hero-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let width, height;
+        let particles = [];
+        
+        function resizeCanvas() {
+            width = canvas.width = canvas.offsetWidth;
+            height = canvas.height = canvas.offsetHeight;
+            
+            createParticles();
+        }
+        
+        function createParticles() {
+            particles = [];
+            
+            for (let i = 0; i < 100; i++) {
+                particles.push({
+                    x: Math.random() * width,
+                    y: Math.random() * height,
+                    radius: Math.random() * 2 + 1,
+                    color: `rgba(${Math.floor(Math.random() * 100 + 155)}, ${Math.floor(Math.random() * 100 + 155)}, ${Math.floor(Math.random() * 255)}, ${Math.random() * 0.5 + 0.1})`,
+                    speedX: Math.random() * 1 - 0.5,
+                    speedY: Math.random() * 1 - 0.5
+                });
+            }
+        }
+        
+        function drawParticles() {
+            ctx.clearRect(0, 0, width, height);
+            
+            particles.forEach(particle => {
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.radius, 0, Math.PI * 2);
+                ctx.fillStyle = particle.color;
+                ctx.fill();
+                
+                particle.x += particle.speedX;
+                particle.y += particle.speedY;
+                
+                if (particle.x < 0 || particle.x > width) particle.speedX *= -1;
+                if (particle.y < 0 || particle.y > height) particle.speedY *= -1;
+            });
+            
+            connectParticles();
+            requestAnimationFrame(drawParticles);
+        }
+        
+        function connectParticles() {
+            const maxDistance = 150;
+            
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < maxDistance) {
+                        const opacity = 1 - (distance / maxDistance);
+                        ctx.beginPath();
+                        ctx.strokeStyle = `rgba(255, 255, 255, ${opacity * 0.2})`;
+                        ctx.lineWidth = 1;
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+        
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        drawParticles();
+
+        // Immersive display controls
+        const items = document.querySelectorAll('.item');
+        let currentModelIndex = 0;
+        const modelPlaceholder = document.querySelector('.model-placeholder img');
+        
+        function updateModel() {
+            modelPlaceholder.src = items[currentModelIndex].querySelector('img').src;
+        }
+        
+        document.querySelector('.prev-item').addEventListener('click', () => {
+            currentModelIndex = (currentModelIndex - 1 + items.length) % items.length;
+            updateModel();
+        });
+        
+        document.querySelector('.next-item').addEventListener('click', () => {
+            currentModelIndex = (currentModelIndex + 1) % items.length;
+            updateModel();
+        });
+        
+        let isRotating = false;
+        let rotationAngle = 0;
+        const modelContainer = document.querySelector('.model-container');
+        
+        document.querySelector('.rotate-model').addEventListener('click', () => {
+            isRotating = !isRotating;
+            
+            if (isRotating) {
+                document.querySelector('.rotate-model').textContent = 'Stop Rotation';
+                rotateModel();
+            } else {
+                document.querySelector('.rotate-model').textContent = 'Rotate';
+            }
+        });
+        
+        function rotateModel() {
+            if (!isRotating) return;
+            
+            rotationAngle += 1;
+            modelContainer.style.transform = `rotateY(${rotationAngle}deg)`;
+            
+            requestAnimationFrame(rotateModel);
+        }
+        
+        let zoomLevel = 1;
+        
+        document.querySelector('.zoom-in').addEventListener('click', () => {
+            if (zoomLevel < 1.5) {
+                zoomLevel += 0.1;
+                modelPlaceholder.style.transform = `scale(${zoomLevel})`;
+            }
+        });
+        
+        document.querySelector('.zoom-out').addEventListener('click', () => {
+            if (zoomLevel > 0.5) {
+                zoomLevel -= 0.1;
+                modelPlaceholder.style.transform = `scale(${zoomLevel})`;
+            }
+        });
+        
+        // Initialize model viewer
+        updateModel();
+    </script>
+</body>
+</html>
