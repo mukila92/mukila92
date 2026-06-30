@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AR Summoners — Print Your Marker Cards</title>
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',Arial,sans-serif; background:#0f0f0f; color:#eee; padding:24px; }
+    h1   { text-align:center; color:#00ffaa; font-size:28px; margin-bottom:6px; }
+    .sub { text-align:center; color:#666; font-size:14px; margin-bottom:32px; }
+    .grid {
+      display:grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px,1fr));
+      gap:20px; max-width:1000px; margin:0 auto;
+    }
+    .card {
+      background:#1a1a1a; border:2px solid #333; border-radius:16px;
+      padding:20px; text-align:center;
+    }
+    .card img { width:160px; height:160px; border:3px solid #444; border-radius:8px; display:block; margin:0 auto 12px; }
+    .card .name  { font-size:16px; font-weight:700; margin-bottom:4px; }
+    .card .badge { font-size:32px; margin-bottom:8px; }
+    .card .desc  { font-size:12px; color:#888; line-height:1.5; }
+    .card .type  { font-size:11px; margin-top:8px; padding:3px 10px; border-radius:20px; display:inline-block; }
+
+    .warrior .name { color:#3a8fff; }
+    .warrior .type { background:#0d2060; color:#3a8fff; }
+    .mage    .name { color:#c84fff; }
+    .mage    .type { background:#2a0055; color:#c84fff; }
+    .fire    .name { color:#ff6633; }
+    .fire    .type { background:#3a1000; color:#ff6633; }
+    .shield  .name { color:#00ffaa; }
+    .shield  .type { background:#003322; color:#00ffaa; }
+    .boss    .name { color:#ff4433; }
+    .boss    .type { background:#2a0000; color:#ff4433; }
+
+    .print-hint {
+      text-align:center; margin-top:32px; color:#555; font-size:13px;
+    }
+    .btn {
+      display:inline-block; margin:20px auto; padding:12px 28px;
+      background:#00ffaa; color:#000; border:none; border-radius:10px;
+      font-size:15px; font-weight:700; cursor:pointer; text-decoration:none;
+    }
+    .btn:hover { background:#00eeaa; }
+    .center { text-align:center; }
+    .marker-src { font-size:11px; color:#555; margin-top:6px; word-break:break-all; }
+
+    @media print {
+      body  { background:#fff; color:#000; }
+      .card { border-color:#ccc; background:#fff; page-break-inside:avoid; }
+      .card img { border-color:#999; }
+      .btn, .print-hint { display:none; }
+    }
+  </style>
+</head>
+<body>
+  <h1>⚔️ AR Summoners — Marker Cards</h1>
+  <p class="sub">Print or display these cards on a second screen. Hold them in front of your camera to summon creatures!</p>
+
+  <div class="center">
+    <a class="btn" href="ar-game.html">▶ Launch AR Game</a>
+  </div>
+
+  <div class="grid">
+
+    <!-- HIRO marker -->
+    <div class="card warrior">
+      <div class="badge">🐉</div>
+      <div class="name">Blue Dragon Warrior</div>
+      <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/HIRO.jpg"
+           alt="HIRO Marker"
+           onerror="this.style.background='#1a3a8f';this.style.display='block';this.alt='HIRO marker — download from AR.js repo'">
+      <div class="type">HIRO Marker (preset)</div>
+      <div class="desc">A powerful dragon knight. Attacks the Dark Boss when close. Combos with the Fire Mage!</div>
+      <div class="marker-src">hiro.jpg — AR.js standard marker</div>
+    </div>
+
+    <!-- KANJI marker -->
+    <div class="card mage">
+      <div class="badge">🧙</div>
+      <div class="name">Fire Mage</div>
+      <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/KANJI.jpg"
+           alt="KANJI Marker"
+           onerror="this.style.background='#2a0055'">
+      <div class="type">KANJI Marker (preset)</div>
+      <div class="desc">A fire-wielding mage with orbital spell orbs. Deals high magic damage to the Boss.</div>
+      <div class="marker-src">kanji.jpg — AR.js standard marker</div>
+    </div>
+
+    <!-- Barcode 0 — Fire Blast -->
+    <div class="card fire">
+      <div class="badge">🔥</div>
+      <div class="name">Fire Blast Spell</div>
+      <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/barcode/3x3/0.png"
+           alt="Barcode 0"
+           onerror="this.style.background='#3a1000'">
+      <div class="type">Barcode Marker #0</div>
+      <div class="desc">A devastating fire spell. Bring this card close to the Dark Boss to unleash a 28–40 damage blast!</div>
+      <div class="marker-src">3x3 barcode, value: 0</div>
+    </div>
+
+    <!-- Barcode 1 — Shield -->
+    <div class="card shield">
+      <div class="badge">🛡️</div>
+      <div class="name">Shield Spell</div>
+      <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/barcode/3x3/1.png"
+           alt="Barcode 1"
+           onerror="this.style.background='#003322'">
+      <div class="type">Barcode Marker #1</div>
+      <div class="desc">A protective shield that heals 15–25 HP. Bring close to your Dragon or Mage to restore health.</div>
+      <div class="marker-src">3x3 barcode, value: 1</div>
+    </div>
+
+    <!-- Barcode 2 — Boss -->
+    <div class="card boss">
+      <div class="badge">👾</div>
+      <div class="name">Dark Boss Enemy</div>
+      <img src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/barcode/3x3/2.png"
+           alt="Barcode 2"
+           onerror="this.style.background='#2a0000'">
+      <div class="type">Barcode Marker #2</div>
+      <div class="desc">The final boss — 150 HP, 3 eyes of terror. Defeat it to win! Fight it by bringing your character markers close.</div>
+      <div class="marker-src">3x3 barcode, value: 2</div>
+    </div>
+
+  </div>
+
+  <div class="print-hint">
+    <p>💡 <strong>Tip:</strong> Print at 10×10 cm or display on a phone screen (120–160px works fine on camera).</p>
+    <p style="margin-top:8px;">Download HIRO &amp; KANJI from the
+      <a href="https://github.com/AR-js-org/AR.js/tree/master/data/images" style="color:#00ffaa">AR.js GitHub repo</a>.
+      Barcode images are at <code style="color:#666">data/images/barcode/3x3/{n}.png</code>.
+    </p>
+    <br>
+    <button class="btn" onclick="window.print()">🖨️ Print This Page</button>
+  </div>
+</body>
+</html>

@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+  <title>AR Summoners — Marker Battle Game</title>
+
+  <!-- A-Frame 1.4.2 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/aframe/1.4.2/aframe.min.js"></script>
+  <!-- AR.js for marker tracking -->
+  <script src="https://raw.githack.com/AR-js-org/AR.js/3.4.5/aframe/build/aframe-ar.js"></script>
+
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Segoe UI', Arial, sans-serif; background: #000; }
+
+    a-scene { width: 100%; height: 100%; }
+
+    /* ── UI Overlay ── */
+    #ui {
+      position: fixed; inset: 0;
+      pointer-events: none;
+      z-index: 200;
+    }
+
+    /* Top bar */
+    #topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 14px 16px 0;
+      gap: 10px;
+    }
+
+    .char-hud {
+      background: rgba(0,0,0,.75);
+      border-radius: 14px;
+      padding: 10px 14px;
+      min-width: 140px;
+      border: 2px solid transparent;
+      transition: border-color .3s;
+    }
+    .char-hud.warrior { border-color: #3a8fff; }
+    .char-hud.mage    { border-color: #c84fff; }
+    .char-hud.dragon  { border-color: #ff4433; }
+
+    .char-name {
+      font-size: 13px; font-weight: 700; letter-spacing: 1px;
+      text-transform: uppercase; margin-bottom: 6px;
+    }
+    .char-hud.warrior .char-name { color: #3a8fff; }
+    .char-hud.mage    .char-name { color: #c84fff; }
+    .char-hud.dragon  .char-name { color: #ff4433; }
+
+    .hp-bar-bg {
+      width: 100%; height: 10px;
+      background: rgba(255,255,255,.15);
+      border-radius: 6px; overflow: hidden;
+    }
+    .hp-bar {
+      height: 100%; border-radius: 6px;
+      transition: width .3s ease;
+    }
+    .warrior .hp-bar { background: linear-gradient(90deg,#1a6fff,#3af); }
+    .mage    .hp-bar { background: linear-gradient(90deg,#a020ff,#f0f); }
+    .dragon  .hp-bar { background: linear-gradient(90deg,#ff2200,#ff8800); }
+    .hp-text { font-size: 11px; color: #ccc; margin-top: 4px; }
+
+    /* Score */
+    #score-box {
+      background: rgba(0,0,0,.8);
+      border: 2px solid #00ffaa;
+      border-radius: 14px;
+      padding: 8px 18px;
+      text-align: center;
+      color: #00ffaa;
+    }
+    #score-box .label { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; }
+    #score-box .value { font-size: 28px; font-weight: 900; line-height: 1; }
+
+    /* Battle log */
+    #battle-log {
+      position: absolute;
+      bottom: 90px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,.7);
+      border: 1px solid rgba(255,255,255,.2);
+      border-radius: 10px;
+      padding: 8px 18px;
+      color: #fff; font-size: 14px;
+      text-align: center;
+      max-width: 320px;
+      opacity: 0;
+      transition: opacity .4s;
+      white-space: nowrap;
+    }
+    #battle-log.show { opacity: 1; }
+
+    /* Card legend */
+    #legend {
+      position: absolute;
+      bottom: 12px; left: 50%;
+      transform: translateX(-50%);
+      display: flex; gap: 8px;
+      pointer-events: auto;
+    }
+    .legend-card {
+      background: rgba(0,0,0,.75);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 10px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,.2);
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    .legend-card:hover { border-color: #00ffaa; }
+    .legend-card .marker-icon { font-size: 18px; }
+    .legend-card .marker-label { color: #aaa; margin-top: 2px; }
+
+    /* Intro/Help panel */
+    #intro {
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.9);
+      display: flex; align-items: center; justify-content: center;
+      pointer-events: auto;
+      z-index: 300;
+    }
+    .intro-box {
+      background: #111;
+      border: 2px solid #00ffaa;
+      border-radius: 20px;
+      padding: 32px 36px;
+      max-width: 400px; width: 90%;
+      text-align: center; color: #eee;
+    }
+    .intro-box h1 { font-size: 26px; color: #00ffaa; margin-bottom: 8px; }
+    .intro-box p  { font-size: 14px; color: #aaa; margin-bottom: 20px; line-height: 1.6; }
+    .marker-list  { text-align: left; margin-bottom: 20px; }
+    .marker-list li {
+      list-style: none; padding: 6px 0;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      font-size: 13px; display: flex; align-items: center; gap: 10px;
+    }
+    .marker-list li span.badge {
+      display: inline-block; width: 26px; height: 26px; border-radius: 6px;
+      font-size: 16px; text-align: center; line-height: 26px; flex-shrink: 0;
+    }
+    .btn-start {
+      background: #00ffaa; color: #000;
+      border: none; border-radius: 10px;
+      padding: 12px 32px; font-size: 16px; font-weight: 700;
+      cursor: pointer; transition: transform .15s, background .2s;
+      pointer-events: auto;
+    }
+    .btn-start:hover { transform: scale(1.05); background: #00eeaa; }
+
+    /* Effect flash */
+    #flash {
+      position: absolute; inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .15s;
+    }
+
+    /* Victory screen */
+    #victory {
+      display: none;
+      position: absolute; inset: 0;
+      background: rgba(0,0,0,.85);
+      align-items: center; justify-content: center;
+      z-index: 250; pointer-events: auto;
+    }
+    #victory.show { display: flex; }
+    .victory-box {
+      text-align: center; color: #fff;
+      animation: popIn .4s cubic-bezier(.34,1.56,.64,1) both;
+    }
+    .victory-box h2 { font-size: 48px; font-weight: 900; }
+    .victory-box p  { font-size: 20px; color: #aaa; margin: 8px 0 24px; }
+    .victory-box .final-score { font-size: 36px; color: #00ffaa; font-weight: 700; }
+    @keyframes popIn {
+      from { transform: scale(.5); opacity: 0; }
+      to   { transform: scale(1);  opacity: 1; }
+    }
+
+    /* Spell overlay cards */
+    #spell-alerts {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%,-50%);
+      pointer-events: none;
+    }
+    .spell-popup {
+      position: absolute;
+      font-size: 32px; font-weight: 900;
+      color: #fff;
+      text-shadow: 0 0 20px currentColor;
+      animation: spellAnim 1.2s ease forwards;
+      white-space: nowrap;
+      transform: translate(-50%,-50%);
+    }
+    @keyframes spellAnim {
+      0%   { opacity:1; transform: translate(-50%,-50%) scale(.5); }
+      30%  { opacity:1; transform: translate(-50%,-80%) scale(1.2); }
+      100% { opacity:0; transform: translate(-50%,-150%) scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Intro Screen ── -->
+<div id="intro">
+  <div class="intro-box">
+    <h1>⚔️ AR Summoners</h1>
+    <p>Print the marker cards, point your camera at them, and watch your creatures come alive. Bring two markers close to trigger battles!</p>
+    <ul class="marker-list">
+      <li><span class="badge" style="background:#1a3a8f">🐉</span> <div><strong style="color:#3a8fff">HIRO marker</strong> — summons the Blue Dragon</div></li>
+      <li><span class="badge" style="background:#4a0a8f">🧙</span> <div><strong style="color:#c84fff">KANJI marker</strong> — summons the Fire Mage</div></li>
+      <li><span class="badge" style="background:#8f2000">🔥</span> <div><strong style="color:#ff6633">Barcode #0</strong> — Fire Blast spell</div></li>
+      <li><span class="badge" style="background:#005f3a">🛡️</span> <div><strong style="color:#00ffaa">Barcode #1</strong> — Shield spell</div></li>
+      <li><span class="badge" style="background:#3f2000">👾</span> <div><strong style="color:#ff4433">Barcode #2</strong> — Dark Boss enemy</div></li>
+    </ul>
+    <p style="font-size:12px;color:#666;margin-bottom:16px;">Allow camera access when prompted. Marker PDFs are in the <em>markers/</em> folder.</p>
+    <button class="btn-start" onclick="startGame()">Start Game →</button>
+  </div>
+</div>
+
+<!-- ── Victory Screen ── -->
+<div id="victory">
+  <div class="victory-box">
+    <h2 id="victory-title">🏆 VICTORY!</h2>
+    <p id="victory-sub">All enemies defeated!</p>
+    <div class="final-score" id="victory-score">Score: 0</div>
+    <br><br>
+    <button class="btn-start" onclick="resetGame()">Play Again</button>
+  </div>
+</div>
+
+<!-- ── Main HUD ── -->
+<div id="ui">
+  <div id="topbar">
+    <!-- Warrior HUD -->
+    <div class="char-hud warrior" id="hud-warrior">
+      <div class="char-name">🐉 Blue Dragon</div>
+      <div class="hp-bar-bg"><div class="hp-bar" id="hp-warrior" style="width:100%"></div></div>
+      <div class="hp-text" id="hp-warrior-text">HP: 100 / 100</div>
+    </div>
+
+    <!-- Score -->
+    <div id="score-box">
+      <div class="label">Score</div>
+      <div class="value" id="score-display">0</div>
+    </div>
+
+    <!-- Mage HUD -->
+    <div class="char-hud mage" id="hud-mage">
+      <div class="char-name">🧙 Fire Mage</div>
+      <div class="hp-bar-bg"><div class="hp-bar" id="hp-mage" style="width:100%"></div></div>
+      <div class="hp-text" id="hp-mage-text">HP: 100 / 100</div>
+    </div>
+  </div>
+
+  <!-- Dragon Boss HUD (appears when marker 2 is visible) -->
+  <div style="display:flex;justify-content:center;margin-top:8px;">
+    <div class="char-hud dragon" id="hud-dragon" style="display:none!important;">
+      <div class="char-name">👾 Dark Boss</div>
+      <div class="hp-bar-bg"><div class="hp-bar" id="hp-dragon" style="width:100%"></div></div>
+      <div class="hp-text" id="hp-dragon-text">HP: 150 / 150</div>
+    </div>
+  </div>
+
+  <!-- Battle log -->
+  <div id="battle-log"></div>
+
+  <!-- Screen flash -->
+  <div id="flash"></div>
+
+  <!-- Spell effect popups -->
+  <div id="spell-alerts"></div>
+
+  <!-- Card legend -->
+  <div id="legend">
+    <div class="legend-card"><div class="marker-icon">🐉</div><div class="marker-label">HIRO</div></div>
+    <div class="legend-card"><div class="marker-icon">🧙</div><div class="marker-label">KANJI</div></div>
+    <div class="legend-card"><div class="marker-icon">🔥</div><div class="marker-label">BC #0</div></div>
+    <div class="legend-card"><div class="marker-icon">🛡️</div><div class="marker-label">BC #1</div></div>
+    <div class="legend-card"><div class="marker-icon">👾</div><div class="marker-label">BC #2</div></div>
+  </div>
+</div>
+
+<!-- ── A-Frame AR Scene ── -->
+<a-scene
+  id="ar-scene"
+  embedded
+  arjs="trackingMethod: best; sourceType: webcam; debugUIEnabled: false; detectionMode: mono_and_matrix; matrixCodeType: 3x3;"
+  vr-mode-ui="enabled: false"
+  renderer="antialias: true; alpha: true; logarithmicDepthBuffer: true;"
+  loading-screen="dotsColor: #00ffaa; backgroundColor: black">
+
+  <!-- Global lighting -->
+  <a-light type="ambient" color="#ffffff" intensity="0.6"></a-light>
+  <a-light type="directional" position="2 4 3" color="#fff" intensity="1.2" castShadow="true"></a-light>
+  <a-light type="point" color="#3a8fff" intensity="0.4" position="0 2 0"></a-light>
+
+  <!-- ══════════════════════════════════════
+       HIRO MARKER → Blue Dragon Warrior
+       ══════════════════════════════════════ -->
+  <a-marker preset="hiro" id="marker-hiro" emitevents="true" smooth="true" smoothCount="5">
+    <a-entity id="warrior" class="character" position="0 0 0">
+
+      <!-- Hover bob animation wrapper -->
+      <a-entity id="warrior-bob"
+        animation="property: position; from: 0 0 0; to: 0 0.02 0; dir: alternate; loop: true; dur: 900; easing: easeInOutSine">
+
+        <!-- Body core -->
+        <a-box position="0 0.14 0" width="0.1" height="0.12" depth="0.07"
+          material="color:#1a4fd6; metalness:0.8; roughness:0.2; emissive:#0020aa; emissiveIntensity:0.3"
+          animation__spin="property: rotation; to: 0 360 0; loop: true; dur: 6000; easing: linear">
+        </a-box>
+
+        <!-- Chest plate -->
+        <a-box position="0 0.15 0.035" width="0.07" height="0.08" depth="0.01"
+          material="color:#66aaff; metalness:0.95; roughness:0.1; emissive:#3388ff; emissiveIntensity:0.4">
+        </a-box>
+
+        <!-- Head -->
+        <a-sphere position="0 0.245 0" radius="0.045"
+          material="color:#22aaff; metalness:0.5; roughness:0.4; emissive:#0044cc; emissiveIntensity:0.3">
+        </a-sphere>
+
+        <!-- Helmet top -->
+        <a-cone position="0 0.295 0" radius-bottom="0.048" radius-top="0.005" height="0.04"
+          material="color:#1a4fd6; metalness:0.9; roughness:0.1">
+        </a-cone>
+
+        <!-- Eyes -->
+        <a-sphere position="0.018 0.25 0.038" radius="0.008"
+          material="color:#00ffee; emissive:#00ffee; emissiveIntensity:3">
+        </a-sphere>
+        <a-sphere position="-0.018 0.25 0.038" radius="0.008"
+          material="color:#00ffee; emissive:#00ffee; emissiveIntensity:3">
+        </a-sphere>
+
+        <!-- Eye glow light -->
+        <a-light type="point" position="0 0.25 0.04" color="#00ffee" intensity="0.6" distance="0.2"></a-light>
+
+        <!-- Left wing -->
+        <a-entity position="-0.08 0.16 0"
+          animation="property: rotation; from: 0 0 -10; to: 0 0 25; dir: alternate; loop: true; dur: 500; easing: easeInOutSine">
+          <a-box position="-0.07 0.01 0" width="0.12" height="0.09" depth="0.01"
+            material="color:#3366ff; metalness:0.6; roughness:0.4; opacity:0.85; transparent:true">
+          </a-box>
+          <a-box position="-0.13 0.03 0" width="0.06" height="0.06" depth="0.01"
+            material="color:#2255ee; opacity:0.7; transparent:true">
+          </a-box>
+        </a-entity>
+
+        <!-- Right wing -->
+        <a-entity position="0.08 0.16 0"
+          animation="property: rotation; from: 0 0 10; to: 0 0 -25; dir: alternate; loop: true; dur: 500; easing: easeInOutSine">
+          <a-box position="0.07 0.01 0" width="0.12" height="0.09" depth="0.01"
+            material="color:#3366ff; metalness:0.6; roughness:0.4; opacity:0.85; transparent:true">
+          </a-box>
+          <a-box position="0.13 0.03 0" width="0.06" height="0.06" depth="0.01"
+            material="color:#2255ee; opacity:0.7; transparent:true">
+          </a-box>
+        </a-entity>
+
+        <!-- Legs -->
+        <a-box position="-0.025 0.065 0" width="0.03" height="0.065" depth="0.03"
+          material="color:#1a3fa0; metalness:0.7; roughness:0.3">
+        </a-box>
+        <a-box position="0.025 0.065 0" width="0.03" height="0.065" depth="0.03"
+          material="color:#1a3fa0; metalness:0.7; roughness:0.3">
+        </a-box>
+
+        <!-- Feet -->
+        <a-box position="-0.025 0.027 0.015" width="0.03" height="0.015" depth="0.04"
+          material="color:#112080; metalness:0.9">
+        </a-box>
+        <a-box position="0.025 0.027 0.015" width="0.03" height="0.015" depth="0.04"
+          material="color:#112080; metalness:0.9">
+        </a-box>
+
+        <!-- Sword (right arm) -->
+        <a-entity position="0.07 0.14 0"
+          animation="property: rotation; from: 0 0 -10; to: 0 0 15; dir: alternate; loop: true; dur: 1200; easing: easeInOutSine">
+          <!-- Arm -->
+          <a-box position="0.025 0 0" width="0.045" height="0.025" depth="0.025"
+            material="color:#1a4fd6; metalness:0.7">
+          </a-box>
+          <!-- Blade -->
+          <a-box position="0.06 0.03 0" width="0.015" height="0.1" depth="0.008"
+            material="color:#aaddff; metalness:0.95; roughness:0.05; emissive:#88ccff; emissiveIntensity:0.5">
+          </a-box>
+          <!-- Guard -->
+          <a-box position="0.06 -0.01 0" width="0.04" height="0.008" depth="0.01"
+            material="color:#ffcc00; metalness:0.9">
+          </a-box>
+        </a-entity>
+
+        <!-- Shield (left arm) -->
+        <a-entity position="-0.07 0.14 0"
+          animation="property: rotation; from: 0 0 5; to: 0 0 -10; dir: alternate; loop: true; dur: 1400; easing: easeInOutSine">
+          <a-box position="-0.025 0 0" width="0.045" height="0.025" depth="0.025"
+            material="color:#1a4fd6; metalness:0.7">
+          </a-box>
+          <a-cylinder position="-0.055 0 0" radius="0.04" height="0.008" rotation="0 0 90"
+            material="color:#3366ff; metalness:0.8; roughness:0.2; emissive:#1144cc; emissiveIntensity:0.3">
+          </a-cylinder>
+          <a-sphere position="-0.055 0 0" radius="0.01"
+            material="color:#00ffee; emissive:#00ffee; emissiveIntensity:2">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Tail -->
+        <a-cylinder position="-0.07 0.1 0" radius="0.012" height="0.08" rotation="0 0 60"
+          material="color:#1a3fa0; metalness:0.6">
+        </a-cylinder>
+        <a-cylinder position="-0.12 0.075 0" radius="0.008" height="0.06" rotation="0 0 80"
+          material="color:#112080; metalness:0.6">
+        </a-cylinder>
+        <a-cone position="-0.155 0.065 0" radius-bottom="0.016" radius-top="0.003" height="0.025" rotation="0 0 100"
+          material="color:#00ffee; emissive:#00ffee; emissiveIntensity:1">
+        </a-cone>
+
+        <!-- Ground aura ring -->
+        <a-torus position="0 0.002 0" radius="0.09" radius-tubular="0.006" rotation="-90 0 0"
+          material="color:#3a8fff; emissive:#3a8fff; emissiveIntensity:1; opacity:0.6; transparent:true"
+          animation="property: scale; from: 1 1 1; to: 1.15 1.15 1.15; dir: alternate; loop: true; dur: 1000; easing: easeInOutSine">
+        </a-torus>
+
+      </a-entity><!-- /warrior-bob -->
+
+      <!-- Status label -->
+      <a-text value="Blue Dragon" position="0 0.34 0" align="center" color="#3a8fff"
+        width="0.6" font="roboto" material="color:#3a8fff">
+      </a-text>
+    </a-entity><!-- /warrior -->
+  </a-marker>
+
+  <!-- ══════════════════════════════════════
+       KANJI MARKER → Fire Mage
+       ══════════════════════════════════════ -->
+  <a-marker preset="kanji" id="marker-kanji" emitevents="true" smooth="true" smoothCount="5">
+    <a-entity id="mage" class="character" position="0 0 0">
+
+      <a-entity id="mage-bob"
+        animation="property: position; from: 0 0 0; to: 0 0.025 0; dir: alternate; loop: true; dur: 700; easing: easeInOutSine">
+
+        <!-- Robe body -->
+        <a-cone position="0 0.09 0" radius-bottom="0.065" radius-top="0.03" height="0.14"
+          material="color:#6600cc; metalness:0.3; roughness:0.6; emissive:#440088; emissiveIntensity:0.4">
+        </a-cone>
+
+        <!-- Torso upper -->
+        <a-sphere position="0 0.175 0" radius="0.04" scale="1 1.1 1"
+          material="color:#8800ff; metalness:0.4; roughness:0.5; emissive:#5500cc; emissiveIntensity:0.3">
+        </a-sphere>
+
+        <!-- Head -->
+        <a-sphere position="0 0.245 0" radius="0.04"
+          material="color:#ffddbb; metalness:0.1; roughness:0.8">
+        </a-sphere>
+
+        <!-- Wizard hat brim -->
+        <a-cylinder position="0 0.28 0" radius="0.055" height="0.008"
+          material="color:#4400aa; metalness:0.5; roughness:0.5">
+        </a-cylinder>
+        <!-- Wizard hat cone -->
+        <a-cone position="0 0.33 0" radius-bottom="0.04" radius-top="0.002" height="0.08"
+          material="color:#5500cc; metalness:0.4; roughness:0.4; emissive:#3300aa; emissiveIntensity:0.3">
+        </a-cone>
+        <!-- Hat star -->
+        <a-sphere position="0 0.375 0" radius="0.006"
+          material="color:#ffdd00; emissive:#ffdd00; emissiveIntensity:3">
+        </a-sphere>
+
+        <!-- Eyes -->
+        <a-sphere position="0.015 0.248 0.035" radius="0.008"
+          material="color:#ff44ff; emissive:#ff44ff; emissiveIntensity:3">
+        </a-sphere>
+        <a-sphere position="-0.015 0.248 0.035" radius="0.008"
+          material="color:#ff44ff; emissive:#ff44ff; emissiveIntensity:3">
+        </a-sphere>
+        <a-light type="point" position="0 0.248 0.04" color="#ff44ff" intensity="0.5" distance="0.25"></a-light>
+
+        <!-- Staff arm (right) -->
+        <a-entity position="0.055 0.17 0"
+          animation="property: rotation; from: 0 0 -5; to: 0 0 10; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine">
+          <a-box position="0.02 0 0" width="0.02" height="0.02" depth="0.02"
+            material="color:#8800ff; metalness:0.5">
+          </a-box>
+          <!-- Staff pole -->
+          <a-cylinder position="0.03 0.09 0" radius="0.007" height="0.2"
+            material="color:#8b5a00; metalness:0.3; roughness:0.7">
+          </a-cylinder>
+          <!-- Staff orb -->
+          <a-sphere position="0.03 0.2 0" radius="0.018"
+            material="color:#ff88ff; emissive:#ff44ff; emissiveIntensity:2; opacity:0.9; transparent:true"
+            animation="property: scale; from: 1 1 1; to: 1.3 1.3 1.3; dir: alternate; loop: true; dur: 600; easing: easeInOutSine">
+          </a-sphere>
+          <a-light type="point" position="0.03 0.2 0" color="#ff44ff" intensity="0.8" distance="0.3"></a-light>
+          <!-- Staff orb inner -->
+          <a-sphere position="0.03 0.2 0" radius="0.01"
+            material="color:#ffffff; emissive:#ffffff; emissiveIntensity:3">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Left arm (floating) -->
+        <a-entity position="-0.055 0.17 0"
+          animation="property: rotation; from: 0 0 5; to: 0 0 -15; dir: alternate; loop: true; dur: 1800; easing: easeInOutSine">
+          <a-box position="-0.02 0.01 0" width="0.02" height="0.02" depth="0.02"
+            material="color:#8800ff; metalness:0.5">
+          </a-box>
+          <a-sphere position="-0.04 0.01 0" radius="0.016"
+            material="color:#ffaa00; emissive:#ff6600; emissiveIntensity:2; opacity:0.85; transparent:true">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Floating magic orbs (orbit around mage) -->
+        <a-entity
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 2200; easing: linear">
+          <a-sphere position="0.1 0.18 0" radius="0.014"
+            material="color:#ff88ff; emissive:#ff44ff; emissiveIntensity:2; opacity:0.8; transparent:true">
+          </a-sphere>
+        </a-entity>
+        <a-entity
+          animation="property: rotation; to: 0 -360 0; loop: true; dur: 1800; easing: linear">
+          <a-sphere position="0.09 0.22 0.04" radius="0.01"
+            material="color:#ffaa00; emissive:#ff6600; emissiveIntensity:2; opacity:0.8; transparent:true">
+          </a-sphere>
+        </a-entity>
+        <a-entity
+          animation="property: rotation; to: 0 360 0; loop: true; dur: 3000; easing: linear">
+          <a-sphere position="0.1 0.14 0" radius="0.012"
+            material="color:#44ffaa; emissive:#00ffaa; emissiveIntensity:2; opacity:0.8; transparent:true">
+          </a-sphere>
+        </a-entity>
+
+        <!-- Ground aura -->
+        <a-torus position="0 0.002 0" radius="0.09" radius-tubular="0.006" rotation="-90 0 0"
+          material="color:#c84fff; emissive:#c84fff; emissiveIntensity:1; opacity:0.6; transparent:true"
+          animation="property: rotation; from: -90 0 0; to: -90 360 0; loop: true; dur: 3000; easing: linear">
+        </a-torus>
+
+      </a-entity><!-- /mage-bob -->
+
+      <a-text value="Fire Mage" position="0 0.42 0" align="center" color="#c84fff"
+        width="0.6" font="roboto">
+      </a-text>
+    </a-entity><!-- /mage -->
+  </a-marker>
+
+  <!-- ══════════════════════════════════════
+       BARCODE #0 → Fire Blast Spell
+       ══════════════════════════════════════ -->
+  <a-marker type="barcode" value="0" id="marker-spell-fire" emitevents="true" smooth="true">
+    <a-entity id="spell-fire">
+      <!-- Rising fire columns -->
+      <a-entity
+        animation="property: rotation; to: 0 360 0; loop: true; dur: 1200; easing: linear">
+        <a-cone position="0 0.08 0" radius-bottom="0.05" radius-top="0.01" height="0.16"
+          material="color:#ff4400; emissive:#ff2200; emissiveIntensity:2; opacity:0.85; transparent:true"
+          animation="property: scale; from: 1 1 1; to: 0.9 1.2 0.9; dir: alternate; loop: true; dur: 300; easing: easeInOutSine">
+        </a-cone>
+        <a-cone position="0.04 0.06 0" radius-bottom="0.03" radius-top="0.005" height="0.12"
+          material="color:#ff8800; emissive:#ff6600; emissiveIntensity:2; opacity:0.75; transparent:true"
+          animation="property: scale; from: 1 1 1; to: 1.1 0.9 1.1; dir: alternate; loop: true; dur: 250">
+        </a-cone>
+        <a-cone position="-0.04 0.07 0" radius-bottom="0.025" radius-top="0.003" height="0.1"
+          material="color:#ffcc00; emissive:#ffaa00; emissiveIntensity:2; opacity:0.7; transparent:true"
+          animation="property: scale; from: 1 1 1; to: 0.85 1.15 0.85; dir: alternate; loop: true; dur: 350">
+        </a-cone>
+      </a-entity>
+
+      <!-- Fire base glow -->
+      <a-cylinder position="0 0.002 0" radius="0.07" height="0.004"
+        material="color:#ff4400; emissive:#ff2200; emissiveIntensity:3; opacity:0.7; transparent:true">
+      </a-cylinder>
+      <a-light type="point" position="0 0.08 0" color="#ff6600" intensity="1" distance="0.4"></a-light>
+
+      <a-text value="🔥 FIRE BLAST" position="0 0.25 0" align="center" color="#ff6633"
+        width="0.5" font="roboto">
+      </a-text>
+    </a-entity>
+  </a-marker>
+
+  <!-- ══════════════════════════════════════
+       BARCODE #1 → Shield Spell
+       ══════════════════════════════════════ -->
+  <a-marker type="barcode" value="1" id="marker-spell-shield" emitevents="true" smooth="true">
+    <a-entity id="spell-shield">
+      <!-- Shield dome -->
+      <a-sphere position="0 0.1 0" radius="0.12"
+        material="color:#00ffaa; emissive:#00ccaa; emissiveIntensity:1; opacity:0.25; transparent:true; side:double">
+      </a-sphere>
+      <!-- Shield rings -->
+      <a-torus position="0 0.1 0" radius="0.12" radius-tubular="0.004" rotation="0 0 0"
+        material="color:#00ffaa; emissive:#00ffaa; emissiveIntensity:2; opacity:0.8; transparent:true"
+        animation="property: rotation; from: 0 0 0; to: 360 0 0; loop: true; dur: 2000; easing: linear">
+      </a-torus>
+      <a-torus position="0 0.1 0" radius="0.12" radius-tubular="0.004" rotation="90 0 0"
+        material="color:#00ffaa; emissive:#00ffaa; emissiveIntensity:2; opacity:0.8; transparent:true"
+        animation="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 2600; easing: linear">
+      </a-torus>
+      <a-torus position="0 0.1 0" radius="0.12" radius-tubular="0.004" rotation="45 0 0"
+        material="color:#44ffcc; emissive:#00ffaa; emissiveIntensity:2; opacity:0.6; transparent:true"
+        animation="property: rotation; from: 45 0 0; to: 45 -360 0; loop: true; dur: 1800; easing: linear">
+      </a-torus>
+      <!-- Shield star center -->
+      <a-sphere position="0 0.1 0" radius="0.018"
+        material="color:#ffffff; emissive:#00ffaa; emissiveIntensity:4"
+        animation="property: scale; from: 1 1 1; to: 1.5 1.5 1.5; dir: alternate; loop: true; dur: 500">
+      </a-sphere>
+      <a-light type="point" position="0 0.1 0" color="#00ffaa" intensity="1.2" distance="0.5"></a-light>
+
+      <a-text value="🛡️ SHIELD" position="0 0.26 0" align="center" color="#00ffaa"
+        width="0.5" font="roboto">
+      </a-text>
+    </a-entity>
+  </a-marker>
+
+  <!-- ══════════════════════════════════════
+       BARCODE #2 → Dark Boss Enemy
+       ══════════════════════════════════════ -->
+  <a-marker type="barcode" value="2" id="marker-boss" emitevents="true" smooth="true" smoothCount="5">
+    <a-entity id="boss" class="character">
+
+      <a-entity id="boss-bob"
+        animation="property: position; from: 0 0 0; to: 0 0.015 0; dir: alternate; loop: true; dur: 600; easing: easeInOutSine">
+
+        <!-- Boss body — dark spiked form -->
+        <a-sphere position="0 0.12 0" radius="0.07"
+          material="color:#1a0033; metalness:0.8; roughness:0.2; emissive:#220000; emissiveIntensity:0.5"
+          animation__spin="property: rotation; to: 0 360 0; loop: true; dur: 5000; easing: linear">
+        </a-sphere>
+
+        <!-- Spikes -->
+        <a-cone position="0 0.22 0"    radius-bottom="0.015" radius-top="0.002" height="0.05"
+          material="color:#ff2200; emissive:#ff0000; emissiveIntensity:1"></a-cone>
+        <a-cone position="0.06 0.19 0" radius-bottom="0.012" radius-top="0.002" height="0.04" rotation="0 0 -40"
+          material="color:#ff2200; emissive:#ff0000; emissiveIntensity:1"></a-cone>
+        <a-cone position="-0.06 0.19 0" radius-bottom="0.012" radius-top="0.002" height="0.04" rotation="0 0 40"
+          material="color:#ff2200; emissive:#ff0000; emissiveIntensity:1"></a-cone>
+        <a-cone position="0 0.19 0.055" radius-bottom="0.012" radius-top="0.002" height="0.04" rotation="-40 0 0"
+          material="color:#cc1100; emissive:#aa0000; emissiveIntensity:1"></a-cone>
+        <a-cone position="0 0.19 -0.055" radius-bottom="0.012" radius-top="0.002" height="0.04" rotation="40 0 0"
+          material="color:#cc1100; emissive:#aa0000; emissiveIntensity:1"></a-cone>
+
+        <!-- Eyes (3 eyes) -->
+        <a-sphere position="0.02 0.14 0.06" radius="0.012"
+          material="color:#ff4400; emissive:#ff2200; emissiveIntensity:4">
+        </a-sphere>
+        <a-sphere position="-0.02 0.14 0.06" radius="0.012"
+          material="color:#ff4400; emissive:#ff2200; emissiveIntensity:4">
+        </a-sphere>
+        <a-sphere position="0 0.17 0.06" radius="0.009"
+          material="color:#ffaa00; emissive:#ff8800; emissiveIntensity:4">
+        </a-sphere>
+        <a-light type="point" position="0 0.15 0.07" color="#ff2200" intensity="1.2" distance="0.4"></a-light>
+
+        <!-- Claws -->
+        <a-entity position="0.1 0.1 0"
+          animation="property: rotation; from: 0 0 -20; to: 0 0 20; dir: alternate; loop: true; dur: 800; easing: easeInOutSine">
+          <a-box position="0.04 0 0" width="0.06" height="0.02" depth="0.03"
+            material="color:#2a0044; metalness:0.7; roughness:0.3">
+          </a-box>
+          <a-cone position="0.075 -0.015 0.01" radius-bottom="0.01" radius-top="0.002" height="0.03" rotation="0 0 130"
+            material="color:#ff2200; emissive:#ff0000; emissiveIntensity:1">
+          </a-cone>
+          <a-cone position="0.075 -0.015 -0.01" radius-bottom="0.01" radius-top="0.002" height="0.03" rotation="0 0 130"
+            material="color:#ff2200; emissive:#ff0000; emissiveIntensity:1">
+          </a-cone>
+        </a-entity>
+        <a-entity position="-0.1 0.1 0"
+          animation="property: rotation; from: 0 0 20; to: 0 0 -20; dir: alternate; loop: true; dur: 800; easing: easeInOutSine">
+          <a-box position="-0.04 0 0" width="0.06" height="0.02" depth="0.03"
+            material="color:#2a0044; metalness:0.7; roughness:0.3">
+          </a-box>
+          <a-cone position="-0.075 -0.015 0.01" radius-bottom="0.01" radius-top="0.002" height="0.03" rotation="0 0 -130"
+            material="color:#ff2200; emissive:#ff0000; emissiveIntensity:1">
+          </a-cone>
+        </a-entity>
+
+        <!-- Legs -->
+        <a-box position="-0.03 0.04 0" width="0.025" height="0.05" depth="0.025"
+          material="color:#1a0022; metalness:0.6">
+        </a-box>
+        <a-box position="0.03 0.04 0" width="0.025" height="0.05" depth="0.025"
+          material="color:#1a0022; metalness:0.6">
+        </a-box>
+
+        <!-- Orbiting dark energy -->
+        <a-entity animation="property: rotation; to: 0 360 0; loop: true; dur: 1500; easing: linear">
+          <a-torus position="0.1 0.12 0" radius="0.015" radius-tubular="0.004"
+            material="color:#ff2200; emissive:#ff0000; emissiveIntensity:2; opacity:0.8; transparent:true">
+          </a-torus>
+        </a-entity>
+        <a-entity animation="property: rotation; to: 0 -360 0; loop: true; dur: 2000; easing: linear">
+          <a-torus position="0 0.12 0.1" radius="0.012" radius-tubular="0.004"
+            material="color:#aa0000; emissive:#880000; emissiveIntensity:2; opacity:0.8; transparent:true">
+          </a-torus>
+        </a-entity>
+
+        <!-- Ground aura -->
+        <a-torus position="0 0.002 0" radius="0.09" radius-tubular="0.006" rotation="-90 0 0"
+          material="color:#ff2200; emissive:#ff0000; emissiveIntensity:2; opacity:0.5; transparent:true"
+          animation="property: scale; from: 1 1 1; to: 1.2 1.2 1.2; dir: alternate; loop: true; dur: 700; easing: easeInOutSine">
+        </a-torus>
+
+      </a-entity><!-- /boss-bob -->
+
+      <a-text value="👾 DARK BOSS" position="0 0.32 0" align="center" color="#ff4433"
+        width="0.6" font="roboto">
+      </a-text>
+    </a-entity><!-- /boss -->
+  </a-marker>
+
+  <!-- Camera entity (required by AR.js) -->
+  <a-entity camera></a-entity>
+</a-scene>
+
+<!-- ══════════════════════════════════════
+     GAME LOGIC
+     ══════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Game state ──────────────────────────────────────────────────────────────
+const GS = {
+  started: false,
+  score: 0,
+  tick: 0,
+  battleCooldown: 0,  // frames between auto-attacks
+  spellCooldown: {},  // per-spell cooldown
+
+  chars: {
+    warrior: { hp: 100, maxHp: 100, visible: false, atk: 18, def: 4,  id: 'warrior' },
+    mage:    { hp: 100, maxHp: 100, visible: false, atk: 24, def: 2,  id: 'mage'    },
+    boss:    { hp: 150, maxHp: 150, visible: false, atk: 20, def: 6,  id: 'boss'    },
+  },
+
+  spells: {
+    fire:   { visible: false, lastUsed: -9999 },
+    shield: { visible: false, lastUsed: -9999 },
+  },
+};
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const $  = id => document.getElementById(id);
+const el = {
+  hpWarrior:   $('hp-warrior'),
+  hpMage:      $('hp-mage'),
+  hpDragon:    $('hp-dragon'),
+  hpWText:     $('hp-warrior-text'),
+  hpMText:     $('hp-mage-text'),
+  hpDText:     $('hp-dragon-text'),
+  score:       $('score-display'),
+  log:         $('battle-log'),
+  flash:       $('flash'),
+  hudDragon:   $('hud-dragon'),
+  spellAlerts: $('spell-alerts'),
+  victory:     $('victory'),
+  victoryTitle: $('victory-title'),
+  victoryScore: $('victory-score'),
+  victorySub:  $('victory-sub'),
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+let logTimeout = null;
+function showLog(msg, color = '#fff') {
+  el.log.textContent = msg;
+  el.log.style.color = color;
+  el.log.classList.add('show');
+  clearTimeout(logTimeout);
+  logTimeout = setTimeout(() => el.log.classList.remove('show'), 2800);
+}
+
+function showSpellPopup(text, color) {
+  const div = document.createElement('div');
+  div.className = 'spell-popup';
+  div.style.color = color;
+  div.textContent = text;
+  el.spellAlerts.appendChild(div);
+  setTimeout(() => div.remove(), 1300);
+}
+
+function flashScreen(color) {
+  el.flash.style.background = color;
+  el.flash.style.opacity = '0.35';
+  setTimeout(() => { el.flash.style.opacity = '0'; }, 200);
+}
+
+function updateHPBar(char, domBar, domText) {
+  const pct = Math.max(0, (char.hp / char.maxHp) * 100);
+  domBar.style.width = pct + '%';
+  domText.textContent = `HP: ${Math.max(0, Math.round(char.hp))} / ${char.maxHp}`;
+  if (pct < 25) domBar.style.filter = 'hue-rotate(120deg)';
+  else if (pct < 50) domBar.style.filter = 'hue-rotate(60deg)';
+  else domBar.style.filter = '';
+}
+
+function addScore(pts) {
+  GS.score += pts;
+  el.score.textContent = GS.score;
+}
+
+function rand(min, max) { return min + Math.random() * (max - min); }
+function randInt(min, max) { return Math.floor(rand(min, max + 1)); }
+
+// ── 3D position helper (world position of marker) ────────────────────────────
+function getWorldPos(markerEl) {
+  const obj = markerEl.object3D;
+  const pos = new THREE.Vector3();
+  obj.getWorldPosition(pos);
+  return pos;
+}
+
+function dist3D(a, b) { return a.distanceTo(b); }
+
+// ── Combat ────────────────────────────────────────────────────────────────────
+const BATTLE_DIST  = 0.25;   // metres between markers to trigger combat
+const SPELL_DIST   = 0.30;   // spell affect radius
+const ATTACK_EVERY = 60;     // ~1 attack/sec at 60fps (AR.js tick)
+
+function dealDamage(attacker, target, targetBar, targetText, label, color) {
+  if (target.hp <= 0) return;
+  const base   = attacker.atk;
+  const dmg    = Math.max(1, randInt(base - 4, base + 4) - target.def);
+  target.hp   -= dmg;
+  updateHPBar(target, targetBar, targetText);
+  showLog(`${label} takes ${dmg} damage!`, color);
+  flashScreen(color);
+  showSpellPopup(`-${dmg}`, color);
+  addScore(dmg);
+  if (target.hp <= 0) {
+    target.hp = 0;
+    onDeath(target);
+  }
+}
+
+function onDeath(char) {
+  showLog(`💀 ${char.id.toUpperCase()} DEFEATED!`, '#fff');
+  flashScreen('rgba(255,255,255,0.5)');
+
+  // Victory check
+  const warriors = [GS.chars.warrior, GS.chars.mage];
+  const allPlayersDead = warriors.every(c => c.hp <= 0);
+  if (char.id === 'boss' || allPlayersDead) {
+    setTimeout(() => showVictory(char.id !== 'boss'), 800);
+  }
+}
+
+function showVictory(playerWon) {
+  el.victoryTitle.textContent = playerWon ? '🏆 VICTORY!' : '💀 DEFEATED!';
+  el.victoryTitle.style.color = playerWon ? '#00ffaa' : '#ff4433';
+  el.victorySub.textContent   = playerWon ? 'The Dark Boss has been slain!' : 'Your summoners were defeated...';
+  el.victoryScore.textContent = 'Score: ' + GS.score;
+  el.victory.classList.add('show');
+}
+
+// ── Spell effects ─────────────────────────────────────────────────────────────
+const SPELL_COOLDOWN = 180;  // ~3 sec
+
+function applyFireBlast(closestEnemy) {
+  if (!closestEnemy || GS.tick - GS.spells.fire.lastUsed < SPELL_COOLDOWN) return;
+  GS.spells.fire.lastUsed = GS.tick;
+
+  const dmg = randInt(28, 40);
+  closestEnemy.hp -= dmg;
+  updateHud();
+  showLog(`🔥 Fire Blast hits for ${dmg}!`, '#ff6633');
+  flashScreen('rgba(255,80,0,0.4)');
+  showSpellPopup(`🔥 BLAST! -${dmg}`, '#ff4400');
+  addScore(dmg + 10);
+  if (closestEnemy.hp <= 0) { closestEnemy.hp = 0; onDeath(closestEnemy); }
+}
+
+function applyShieldSpell(closestAlly) {
+  if (!closestAlly || GS.tick - GS.spells.shield.lastUsed < SPELL_COOLDOWN) return;
+  GS.spells.shield.lastUsed = GS.tick;
+
+  const heal = randInt(15, 25);
+  closestAlly.hp = Math.min(closestAlly.maxHp, closestAlly.hp + heal);
+  updateHud();
+  showLog(`🛡️ Shield heals ${closestAlly.id} for +${heal} HP!`, '#00ffaa');
+  flashScreen('rgba(0,255,150,0.3)');
+  showSpellPopup(`🛡️ SHIELD! +${heal}`, '#00ffaa');
+  addScore(5);
+}
+
+// ── HUD update ────────────────────────────────────────────────────────────────
+function updateHud() {
+  const w = GS.chars.warrior, m = GS.chars.mage, b = GS.chars.boss;
+  updateHPBar(w, el.hpWarrior, el.hpWText);
+  updateHPBar(m, el.hpMage,    el.hpMText);
+  updateHPBar(b, el.hpDragon,  el.hpDText);
+}
+
+// ── Main game tick (registered as A-Frame system) ────────────────────────────
+AFRAME.registerSystem('game-tick', {
+  tick() {
+    if (!GS.started) return;
+    GS.tick++;
+    GS.battleCooldown = Math.max(0, GS.battleCooldown - 1);
+
+    const markerW = $('marker-hiro');
+    const markerM = $('marker-kanji');
+    const markerB = $('marker-boss');
+    const markerF = $('marker-spell-fire');
+    const markerS = $('marker-spell-shield');
+
+    // Update visibility
+    GS.chars.warrior.visible = markerW && markerW.object3D.visible;
+    GS.chars.mage.visible    = markerM && markerM.object3D.visible;
+    GS.chars.boss.visible    = markerB && markerB.object3D.visible;
+    GS.spells.fire.visible   = markerF && markerF.object3D.visible;
+    GS.spells.shield.visible = markerS && markerS.object3D.visible;
+
+    // Show/hide boss HUD
+    if (GS.chars.boss.visible) {
+      el.hudDragon.style.display = '';
+    }
+
+    if (GS.battleCooldown > 0) return;
+
+    // ── Combat: Warriors vs Boss ───────────────────────────────
+    if (GS.chars.boss.visible && GS.chars.boss.hp > 0) {
+      let anyFight = false;
+
+      if (GS.chars.warrior.visible && GS.chars.warrior.hp > 0) {
+        const d = dist3D(getWorldPos(markerW), getWorldPos(markerB));
+        if (d < BATTLE_DIST) {
+          // Warrior attacks boss
+          dealDamage(GS.chars.warrior, GS.chars.boss, el.hpDragon, el.hpDText,
+            '👾 Boss', '#ff4433');
+          if (GS.chars.boss.hp > 0)
+            dealDamage(GS.chars.boss, GS.chars.warrior, el.hpWarrior, el.hpWText,
+              '🐉 Dragon', '#3a8fff');
+          anyFight = true;
+        }
+      }
+
+      if (GS.chars.mage.visible && GS.chars.mage.hp > 0) {
+        const d = dist3D(getWorldPos(markerM), getWorldPos(markerB));
+        if (d < BATTLE_DIST) {
+          dealDamage(GS.chars.mage, GS.chars.boss, el.hpDragon, el.hpDText,
+            '👾 Boss', '#ff4433');
+          if (GS.chars.boss.hp > 0)
+            dealDamage(GS.chars.boss, GS.chars.mage, el.hpMage, el.hpMText,
+              '🧙 Mage', '#c84fff');
+          anyFight = true;
+        }
+      }
+
+      if (anyFight) {
+        GS.battleCooldown = ATTACK_EVERY;
+        return;
+      }
+    }
+
+    // ── Spells ────────────────────────────────────────────────
+    if (GS.spells.fire.visible) {
+      // Fire blast hits nearest enemy
+      if (GS.chars.boss.visible && GS.chars.boss.hp > 0) {
+        const dF = dist3D(getWorldPos(markerF), getWorldPos(markerB));
+        if (dF < SPELL_DIST) {
+          applyFireBlast(GS.chars.boss);
+          GS.battleCooldown = ATTACK_EVERY / 2;
+        }
+      }
+    }
+
+    if (GS.spells.shield.visible) {
+      // Shield heals nearest ally (warrior or mage)
+      let target = null;
+      let minD   = Infinity;
+      if (GS.chars.warrior.visible) {
+        const d = dist3D(getWorldPos(markerS), getWorldPos(markerW));
+        if (d < SPELL_DIST && d < minD) { minD = d; target = GS.chars.warrior; }
+      }
+      if (GS.chars.mage.visible) {
+        const d = dist3D(getWorldPos(markerS), getWorldPos(markerM));
+        if (d < SPELL_DIST && d < minD) { minD = d; target = GS.chars.mage; }
+      }
+      if (target) {
+        applyShieldSpell(target);
+        GS.battleCooldown = ATTACK_EVERY / 2;
+      }
+    }
+
+    // ── Warrior + Mage cooperative combo ─────────────────────
+    if (GS.chars.warrior.visible && GS.chars.mage.visible) {
+      const d = dist3D(getWorldPos(markerW), getWorldPos(markerM));
+      if (d < 0.15 && GS.tick % 180 === 0) {
+        showLog('✨ Dragon & Mage combo! Power rising!', '#ffff00');
+        showSpellPopup('⚡ COMBO!', '#ffff00');
+        GS.chars.warrior.atk = Math.min(30, GS.chars.warrior.atk + 2);
+        GS.chars.mage.atk    = Math.min(36, GS.chars.mage.atk + 2);
+        addScore(20);
+      }
+    }
+  }
+});
+
+// ── Marker events ─────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  $('marker-hiro').addEventListener('markerFound', () => {
+    showLog('🐉 Blue Dragon summoned!', '#3a8fff');
+    showSpellPopup('🐉 SUMMONED!', '#3a8fff');
+  });
+  $('marker-kanji').addEventListener('markerFound', () => {
+    showLog('🧙 Fire Mage summoned!', '#c84fff');
+    showSpellPopup('🧙 SUMMONED!', '#c84fff');
+  });
+  $('marker-boss').addEventListener('markerFound', () => {
+    showLog('👾 Dark Boss appears! FIGHT!', '#ff4433');
+    showSpellPopup('👾 DARK BOSS!', '#ff4433');
+    flashScreen('rgba(255,0,0,0.3)');
+    el.hudDragon.style.display = '';
+  });
+  $('marker-spell-fire').addEventListener('markerFound', () => {
+    showLog('🔥 Fire Blast card ready!', '#ff6633');
+  });
+  $('marker-spell-shield').addEventListener('markerFound', () => {
+    showLog('🛡️ Shield card ready!', '#00ffaa');
+  });
+});
+
+// ── Public functions ──────────────────────────────────────────────────────────
+function startGame() {
+  $('intro').style.display = 'none';
+  GS.started = true;
+
+  // Attach the system to the scene
+  const scene = $('ar-scene');
+  if (!scene.hasAttribute('game-tick')) {
+    scene.setAttribute('game-tick', '');
+  }
+  showLog('Point your camera at the marker cards!', '#00ffaa');
+}
+
+function resetGame() {
+  el.victory.classList.remove('show');
+  GS.score = 0;
+  GS.tick  = 0;
+  GS.battleCooldown = 0;
+  GS.spells.fire.lastUsed   = -9999;
+  GS.spells.shield.lastUsed = -9999;
+  Object.values(GS.chars).forEach(c => {
+    c.hp = c.maxHp;
+    if (c.id === 'warrior') c.atk = 18;
+    if (c.id === 'mage')    c.atk = 24;
+  });
+  el.hudDragon.style.display = 'none';
+  updateHud();
+  el.score.textContent = '0';
+  showLog('Game reset! Bring the markers back!', '#00ffaa');
+}
+
+// Expose for onclick
+window.startGame  = startGame;
+window.resetGame  = resetGame;
+</script>
+</body>
+</html>
